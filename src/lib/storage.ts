@@ -6,6 +6,9 @@ const TASKS_KEY = 'gate_tracker_tasks';
 const SETTINGS_KEY = 'gate_tracker_settings';
 const VERSION_KEY = 'gate_tracker_version';
 const CURRENT_VERSION = '2';
+const LOCKED_DATES_KEY = 'gate_tracker_locked_dates';
+const SETTINGS_VERSION_KEY = 'gate_tracker_settings_version';
+const CURRENT_SETTINGS_VERSION = '2';
 
 function migrateSubjects(raw: Subject[]): Subject[] {
   return GATE_SUBJECTS.map((baseSubject) => {
@@ -65,13 +68,40 @@ export function saveTasks(tasks: Task[]): void {
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as Settings;
+    if (raw) {
+      const settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as Settings;
+      // v1 defaults (6h day + 2h night) become the 2 PM–4 PM + 8 PM–12 AM routine.
+      if (localStorage.getItem(SETTINGS_VERSION_KEY) !== CURRENT_SETTINGS_VERSION) {
+        if (settings.dayStudyHours === 6 && settings.nightStudyHours === 2) {
+          settings.dayStudyHours = DEFAULT_SETTINGS.dayStudyHours;
+          settings.nightStudyHours = DEFAULT_SETTINGS.nightStudyHours;
+          saveSettings(settings);
+        }
+        localStorage.setItem(SETTINGS_VERSION_KEY, CURRENT_SETTINGS_VERSION);
+      }
+      return settings;
+    }
   } catch {}
+  localStorage.setItem(SETTINGS_VERSION_KEY, CURRENT_SETTINGS_VERSION);
   return DEFAULT_SETTINGS;
 }
 
 export function saveSettings(settings: Settings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+export function loadLockedDates(): string[] {
+  try {
+    const raw = localStorage.getItem(LOCKED_DATES_KEY);
+    if (raw) return JSON.parse(raw) as string[];
+  } catch {
+    return [];
+  }
+  return [];
+}
+
+export function saveLockedDates(dates: string[]): void {
+  localStorage.setItem(LOCKED_DATES_KEY, JSON.stringify(dates));
 }
 
 export function setTopicStatus(

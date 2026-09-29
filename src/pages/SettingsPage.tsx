@@ -63,22 +63,22 @@ export default function SettingsPage({ store }: { store: Store }) {
         <h2 className="text-sm font-semibold text-slate-700 mb-4">Daily Study Hours</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Day Study Hours</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Day Study Hours (from 2:00 PM)</label>
             <input
               type="number"
               min={0}
-              max={16}
+              max={6}
               value={form.dayStudyHours}
               onChange={(e) => update({ dayStudyHours: Number(e.target.value) })}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Night Study Hours</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Night Study Hours (from 8:00 PM)</label>
             <input
               type="number"
               min={0}
-              max={8}
+              max={4}
               value={form.nightStudyHours}
               onChange={(e) => update({ nightStudyHours: Number(e.target.value) })}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

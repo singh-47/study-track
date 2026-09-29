@@ -171,8 +171,8 @@ export const GATE_SUBJECTS: Subject[] = [
 export const DEFAULT_SETTINGS: Settings = {
   studyStartDate: new Date().toISOString().slice(0, 10),
   examDate: '2027-02-06',
-  dayStudyHours: 6,
-  nightStudyHours: 2,
+  dayStudyHours: 2,
+  nightStudyHours: 4,
   subjectOrder: GATE_SUBJECTS.map((s) => s.id),
   selectedSubjects: GATE_SUBJECTS.map((s) => s.id),
 };
