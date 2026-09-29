@@ -69,7 +69,7 @@ export default function SettingsPage({ store }: { store: Store }) {
               min={0}
               max={6}
               value={form.dayStudyHours}
-              onChange={(e) => update({ dayStudyHours: Number(e.target.value) })}
+              onChange={(e) => update({ dayStudyHours: Math.min(6, Math.max(0, Number(e.target.value))) })}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -80,7 +80,7 @@ export default function SettingsPage({ store }: { store: Store }) {
               min={0}
               max={4}
               value={form.nightStudyHours}
-              onChange={(e) => update({ nightStudyHours: Number(e.target.value) })}
+              onChange={(e) => update({ nightStudyHours: Math.min(4, Math.max(0, Number(e.target.value))) })}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
