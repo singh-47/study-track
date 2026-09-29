@@ -10,7 +10,6 @@ import {
   loadLockedDates,
   saveLockedDates,
 } from '@/lib/storage';
-import { GATE_SUBJECTS, DEFAULT_SETTINGS } from '@/data/subjects';
 import { planSchedule } from '@/lib/scheduler';
 import { todayStr } from '@/lib/dates';
 
@@ -41,9 +40,9 @@ function topicStatusFromTasks(tasks: Task[], subject: Subject | undefined, topic
 }
 
 export function useStore(): Store {
-  const [subjects, setSubjectsState] = useState<Subject[]>(GATE_SUBJECTS);
+  const [subjects, setSubjectsState] = useState<Subject[]>(loadSubjects);
   const [tasks, setTasksState] = useState<Task[]>([]);
-  const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettingsState] = useState<Settings>(loadSettings);
   const [lockedDates, setLockedDates] = useState<string[]>([]);
   const plannedDay = useRef('');
 
