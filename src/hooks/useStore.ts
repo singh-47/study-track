@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Subject, Task, Settings, TopicStatus } from '@/types';
 import {
   loadSubjects,
@@ -7,9 +7,11 @@ import {
   saveTasks,
   loadSettings,
   saveSettings,
+  loadLockedDates,
+  saveLockedDates,
 } from '@/lib/storage';
 import { GATE_SUBJECTS, DEFAULT_SETTINGS } from '@/data/subjects';
-import { generateDailyTasks } from '@/lib/scheduler';
+import { planSchedule } from '@/lib/scheduler';
 import { todayStr } from '@/lib/dates';
 
 export interface Store {
@@ -27,31 +29,86 @@ export interface Store {
   generateSchedule: () => void;
 }
 
+function topicStatusFromTasks(tasks: Task[], subject: Subject | undefined, topicId: string): TopicStatus | null {
+  const topic = subject?.topics.find((t) => t.id === topicId);
+  if (!subject || !topic) return null;
+  const doneMin = tasks
+    .filter((t) => t.done && t.subjectId === subject.id && t.topicId === topicId)
+    .reduce((acc, t) => acc + t.duration, 0);
+  if (doneMin >= topic.estimatedHours * 60) return 'completed';
+  if (doneMin > 0 || topic.status !== 'pending') return 'in-progress';
+  return 'pending';
+}
+
 export function useStore(): Store {
   const [subjects, setSubjectsState] = useState<Subject[]>(GATE_SUBJECTS);
   const [tasks, setTasksState] = useState<Task[]>([]);
   const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
+  const [lockedDates, setLockedDates] = useState<string[]>([]);
+  const plannedDay = useRef('');
+
+  const commitPlan = useCallback(
+    (
+      nextSubjects: Subject[],
+      nextSettings: Settings,
+      nextTasks: Task[],
+      nextLocked: string[],
+      replanToday = false
+    ) => {
+      const today = todayStr();
+      const locked = [...new Set(nextLocked)].filter((d) => d >= today);
+      const planned = planSchedule(nextSubjects, nextSettings, nextTasks, {
+        today,
+        replanToday,
+        lockedDates: locked,
+      });
+      plannedDay.current = today;
+      setTasksState(planned);
+      saveTasks(planned);
+      setLockedDates(locked);
+      saveLockedDates(locked);
+    },
+    []
+  );
 
   useEffect(() => {
-    setSubjectsState(loadSubjects());
-    setTasksState(loadTasks());
-    setSettingsState(loadSettings());
-  }, []);
+    const refresh = () => {
+      const s = loadSubjects();
+      const st = loadSettings();
+      setSubjectsState(s);
+      setSettingsState(st);
+      commitPlan(s, st, loadTasks(), loadLockedDates());
+    };
+    refresh();
+    const onFocus = () => {
+      if (plannedDay.current !== todayStr()) refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [commitPlan]);
 
-  const setSubjects = useCallback((s: Subject[]) => {
-    setSubjectsState(s);
-    saveSubjects(s);
-  }, []);
+  const setSubjects = useCallback(
+    (s: Subject[]) => {
+      setSubjectsState(s);
+      saveSubjects(s);
+      commitPlan(s, settings, tasks, lockedDates);
+    },
+    [settings, tasks, lockedDates, commitPlan]
+  );
 
   const setTasks = useCallback((t: Task[]) => {
     setTasksState(t);
     saveTasks(t);
   }, []);
 
-  const setSettings = useCallback((s: Settings) => {
-    setSettingsState(s);
-    saveSettings(s);
-  }, []);
+  const setSettings = useCallback(
+    (s: Settings) => {
+      setSettingsState(s);
+      saveSettings(s);
+      commitPlan(subjects, s, tasks, lockedDates, true);
+    },
+    [subjects, tasks, lockedDates, commitPlan]
+  );
 
   const toggleSubjectSelection = useCallback(
     (subjectId: string) => {
@@ -60,8 +117,9 @@ export function useStore(): Store {
       );
       setSubjectsState(updated);
       saveSubjects(updated);
+      commitPlan(updated, settings, tasks, lockedDates, true);
     },
-    [subjects]
+    [subjects, settings, tasks, lockedDates, commitPlan]
   );
 
   const setTopicStatusImpl = useCallback(
@@ -76,8 +134,9 @@ export function useStore(): Store {
       );
       setSubjectsState(updated);
       saveSubjects(updated);
+      commitPlan(updated, settings, tasks, lockedDates);
     },
-    [subjects]
+    [subjects, settings, tasks, lockedDates, commitPlan]
   );
 
   const toggleTask = useCallback(
@@ -85,49 +144,58 @@ export function useStore(): Store {
       const task = tasks.find((t) => t.id === id);
       if (!task) return;
 
-      const updated = tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
-      setTasksState(updated);
-      saveTasks(updated);
-
+      const updatedTasks = tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+      let updatedSubjects = subjects;
       if (task.topicId && task.subjectId) {
-        const newStatus: TopicStatus = task.done ? 'in-progress' : 'completed';
-        setTopicStatusImpl(task.subjectId, task.topicId, newStatus);
+        const subject = subjects.find((s) => s.id === task.subjectId);
+        const status = topicStatusFromTasks(updatedTasks, subject, task.topicId);
+        if (status) {
+          updatedSubjects = subjects.map((s) =>
+            s.id === task.subjectId
+              ? { ...s, topics: s.topics.map((t) => (t.id === task.topicId ? { ...t, status } : t)) }
+              : s
+          );
+          setSubjectsState(updatedSubjects);
+          saveSubjects(updatedSubjects);
+        }
       }
+      commitPlan(updatedSubjects, settings, updatedTasks, lockedDates);
     },
-    [tasks, setTopicStatusImpl]
+    [tasks, subjects, settings, lockedDates, commitPlan]
   );
 
   const addTask = useCallback(
     (task: Omit<Task, 'id'>) => {
       const newTask: Task = { ...task, id: crypto.randomUUID() };
-      const updated = [...tasks, newTask];
-      setTasksState(updated);
-      saveTasks(updated);
+      commitPlan(subjects, settings, [...tasks, newTask], [...lockedDates, task.date]);
     },
-    [tasks]
+    [subjects, settings, tasks, lockedDates, commitPlan]
   );
 
   const deleteTask = useCallback(
     (id: string) => {
-      const updated = tasks.filter((t) => t.id !== id);
-      setTasksState(updated);
-      saveTasks(updated);
+      const task = tasks.find((t) => t.id === id);
+      if (!task) return;
+      commitPlan(
+        subjects,
+        settings,
+        tasks.filter((t) => t.id !== id),
+        [...lockedDates, task.date]
+      );
     },
-    [tasks]
+    [subjects, settings, tasks, lockedDates, commitPlan]
   );
 
   const generateSchedule = useCallback(() => {
     const today = todayStr();
-    const newTasks = generateDailyTasks(subjects, settings, today);
-    if (newTasks.length === 0) return;
-
-    const existingNonGenerated = tasks.filter(
-      (t) => t.date === today && (!t.generated || t.done)
+    commitPlan(
+      subjects,
+      settings,
+      tasks,
+      lockedDates.filter((d) => d !== today),
+      true
     );
-    const updated = [...existingNonGenerated, ...newTasks];
-    setTasksState(updated);
-    saveTasks(updated);
-  }, [subjects, settings, tasks]);
+  }, [subjects, settings, tasks, lockedDates, commitPlan]);
 
   return {
     subjects,

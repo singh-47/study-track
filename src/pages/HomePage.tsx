@@ -6,6 +6,7 @@ import { totalStudyMinutes } from '@/lib/progress';
 import TaskRow from '@/components/TaskRow';
 import ProgressBar from '@/components/ProgressBar';
 import { GATE_SUBJECTS } from '@/data/subjects';
+import { nextIncompleteTask, toMinutes, formatTimeRange, NIGHT_START } from '@/lib/scheduler';
 
 export default function HomePage({ store }: { store: Store }) {
   const { subjects, tasks, settings, toggleTask, generateSchedule } = store;
@@ -27,14 +28,14 @@ export default function HomePage({ store }: { store: Store }) {
     const end = new Date(start.getTime() + t.duration * 60000);
     return now >= start && now <= end;
   });
-  const nextTask = todayTasks
-    .filter((t) => {
-      const [h, m] = t.time.split(':').map(Number);
-      const start = new Date();
-      start.setHours(h, m, 0, 0);
-      return start > now && !t.done;
-    })
-    .sort((a, b) => a.time.localeCompare(b.time))[0];
+  const nextTask = nextIncompleteTask(
+    tasks.filter((t) => t.id !== currentTask?.id),
+    today
+  );
+  const routineGroups = [
+    { label: 'Day Study', tasks: todayTasks.filter((t) => toMinutes(t.time) < NIGHT_START) },
+    { label: 'Night Study', tasks: todayTasks.filter((t) => toMinutes(t.time) >= NIGHT_START) },
+  ].filter((g) => g.tasks.length > 0);
 
   const selectedSubjects = subjects.filter((s) => s.selected);
 
@@ -105,7 +106,9 @@ export default function HomePage({ store }: { store: Store }) {
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Next Task</p>
               <p className="text-slate-800 font-medium mt-1">{nextTask.topic}</p>
               <p className="text-sm text-slate-500 mt-0.5">
-                {GATE_SUBJECTS.find((s) => s.id === nextTask.subjectId)?.name} · {nextTask.time}
+                {GATE_SUBJECTS.find((s) => s.id === nextTask.subjectId)?.name} ·{' '}
+                {nextTask.date !== today && `${formatDate(nextTask.date)}, `}
+                {formatTimeRange(nextTask.time, nextTask.duration)}
               </p>
             </div>
           )}
@@ -141,8 +144,13 @@ export default function HomePage({ store }: { store: Store }) {
               </button>
             </div>
           ) : (
-            todayTasks.map((task) => (
-              <TaskRow key={task.id} task={task} subjects={subjects} onToggle={toggleTask} />
+            routineGroups.map((group) => (
+              <div key={group.label} className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide pt-1">{group.label}</p>
+                {group.tasks.map((task) => (
+                  <TaskRow key={task.id} task={task} subjects={subjects} onToggle={toggleTask} />
+                ))}
+              </div>
             ))
           )}
         </div>

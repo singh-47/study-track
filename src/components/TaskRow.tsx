@@ -1,5 +1,12 @@
 import { CheckCircle2, Circle, Clock, Trash2 } from 'lucide-react';
 import type { Task, Subject } from '@/types';
+import { formatTimeRange, formatDuration, taskPriority, type PriorityLevel } from '@/lib/scheduler';
+
+const PRIORITY_STYLES: Record<PriorityLevel, string> = {
+  High: 'bg-red-100 text-red-700',
+  Medium: 'bg-amber-100 text-amber-700',
+  Low: 'bg-slate-100 text-slate-600',
+};
 
 interface TaskRowProps {
   task: Task;
@@ -12,6 +19,7 @@ interface TaskRowProps {
 export default function TaskRow({ task, subjects, onToggle, onDelete, showDelete = false }: TaskRowProps) {
   const subject = subjects.find((s) => s.id === task.subjectId);
   const subjectName = subject?.name ?? 'Unknown';
+  const priority = taskPriority(task, subjects);
 
   return (
     <div
@@ -42,6 +50,11 @@ export default function TaskRow({ task, subjects, onToggle, onDelete, showDelete
           >
             {subjectName}
           </span>
+          {priority && (
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLES[priority]}`}>
+              {priority}
+            </span>
+          )}
           {task.isExtra && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
               Extra
@@ -55,9 +68,9 @@ export default function TaskRow({ task, subjects, onToggle, onDelete, showDelete
 
       <div className="flex items-center gap-1 text-xs text-slate-400 flex-shrink-0">
         <Clock className="w-3.5 h-3.5" />
-        <span>{task.time}</span>
+        <span>{formatTimeRange(task.time, task.duration)}</span>
         <span className="mx-1">·</span>
-        <span>{task.duration}m</span>
+        <span>{formatDuration(task.duration)}</span>
       </div>
 
       {showDelete && onDelete && (
