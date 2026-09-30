@@ -1,172 +1,26 @@
 import type { Subject, Settings } from '@/types';
+import { GATE_2027_SYLLABUS } from '@/data/syllabus';
 
-function t(id: string, name: string, estimatedHours: number, priority: number) {
-  return { id, name, status: 'pending' as const, estimatedHours, priority };
-}
+export const DEFAULT_TOPIC_HOURS = 4;
 
-export const GATE_SUBJECTS: Subject[] = [
-  {
-    id: 'mathematics',
-    name: 'Discrete & Engineering Mathematics',
-    icon: 'Calculator',
-    selected: true,
-    topics: [
-      t('m1', 'Propositional & First Order Logic', 6, 1),
-      t('m2', 'Sets, Relations & Functions', 5, 2),
-      t('m3', 'Groups, Rings & Fields', 4, 5),
-      t('m4', 'Graphs: Connectivity & Matching', 5, 3),
-      t('m5', 'Combinatorics: Counting & Recurrence', 4, 4),
-      t('m6', 'Probability & Random Variables', 5, 3),
-      t('m7', 'Statistics & Distributions', 3, 6),
-      t('m8', 'Linear Algebra: Matrices & Eigenvalues', 4, 4),
-      t('m9', 'Calculus: Limits, Continuity & Differentiability', 4, 5),
-    ],
-  },
-  {
-    id: 'digital-logic',
-    name: 'Digital Logic',
-    icon: 'Cpu',
-    selected: true,
-    topics: [
-      t('d1', 'Number Systems & Conversions', 2, 1),
-      t('d2', 'Boolean Algebra & Minimization', 3, 2),
-      t('d3', 'Logic Gates & Gate Networks', 2, 3),
-      t('d4', 'Combinational Circuits', 3, 4),
-      t('d5', 'Sequential Circuits: Flip-Flops & Counters', 3, 5),
-      t('d6', 'ADC & DAC', 2, 6),
-    ],
-  },
-  {
-    id: 'coa',
-    name: 'Computer Organization & Architecture',
-    icon: 'Server',
-    selected: true,
-    topics: [
-      t('c1', 'Machine Instructions & Addressing Modes', 3, 1),
-      t('c2', 'ALU, Data Path & Control Unit', 4, 2),
-      t('c3', 'Instruction Pipelining & Hazards', 4, 3),
-      t('c4', 'Memory Hierarchy & Cache', 4, 4),
-      t('c5', 'Main Memory & Virtual Memory', 3, 5),
-      t('c6', 'I/O Interface & Interrupts', 2, 6),
-    ],
-  },
-  {
-    id: 'pds',
-    name: 'Programming & Data Structures',
-    icon: 'Code',
-    selected: true,
-    topics: [
-      t('p1', 'C Programming Fundamentals', 3, 1),
-      t('p2', 'Functions, Recursion & Scope', 3, 2),
-      t('p3', 'Pointers & Dynamic Memory', 4, 3),
-      t('p4', 'Arrays & Strings', 3, 4),
-      t('p5', 'Stacks & Queues', 3, 5),
-      t('p6', 'Linked Lists', 4, 6),
-      t('p7', 'Trees: BST, AVL, B-Trees', 5, 7),
-      t('p8', 'Graphs & Hashing', 4, 8),
-    ],
-  },
-  {
-    id: 'algorithms',
-    name: 'Algorithms',
-    icon: 'GitBranch',
-    selected: true,
-    topics: [
-      t('a1', 'Asymptotic Analysis & Notations', 3, 1),
-      t('a2', 'Recurrence Relations', 3, 2),
-      t('a3', 'Searching & Sorting', 4, 3),
-      t('a4', 'Greedy Algorithms', 3, 4),
-      t('a5', 'Dynamic Programming', 5, 5),
-      t('a6', 'Graph Algorithms: BFS, DFS, MST', 4, 6),
-      t('a7', 'Shortest Path & Network Flow', 3, 7),
-      t('a8', 'Backtracking & Branch & Bound', 2, 8),
-    ],
-  },
-  {
-    id: 'toc',
-    name: 'Theory of Computation',
-    icon: 'Workflow',
-    selected: true,
-    topics: [
-      t('tc1', 'Regular Languages & Finite Automata', 4, 1),
-      t('tc2', 'Context Free Grammars & Derivations', 4, 2),
-      t('tc3', 'Pushdown Automata', 3, 3),
-      t('tc4', 'Turing Machines', 4, 4),
-      t('tc5', 'Decidability & Undecidability', 3, 5),
-      t('tc6', 'Chomsky Hierarchy & Closure Properties', 2, 6),
-    ],
-  },
-  {
-    id: 'compiler',
-    name: 'Compiler Design',
-    icon: 'FileCode',
-    selected: true,
-    topics: [
-      t('cd1', 'Lexical Analysis & Tokenization', 3, 1),
-      t('cd2', 'Parsing: Top-Down & Bottom-Up', 4, 2),
-      t('cd3', 'Syntax Directed Translation', 3, 3),
-      t('cd4', 'Intermediate Code Generation', 3, 4),
-      t('cd5', 'Code Optimization & Peephole', 3, 5),
-      t('cd6', 'Runtime Environment & Code Generation', 2, 6),
-    ],
-  },
-  {
-    id: 'os',
-    name: 'Operating Systems',
-    icon: 'Monitor',
-    selected: true,
-    topics: [
-      t('os1', 'Process Management & Threads', 3, 1),
-      t('os2', 'CPU Scheduling Algorithms', 4, 2),
-      t('os3', 'Inter-Process Communication & Synchronization', 4, 3),
-      t('os4', 'Deadlocks: Prevention & Avoidance', 3, 4),
-      t('os5', 'Memory Management & Paging', 4, 5),
-      t('os6', 'Virtual Memory & Page Replacement', 3, 6),
-      t('os7', 'File System & Disk Scheduling', 3, 7),
-    ],
-  },
-  {
-    id: 'databases',
-    name: 'Databases',
-    icon: 'Database',
-    selected: true,
-    topics: [
-      t('db1', 'ER Model & Diagrams', 3, 1),
-      t('db2', 'Relational Model & Algebra', 4, 2),
-      t('db3', 'SQL & Queries', 4, 3),
-      t('db4', 'Normalization & Functional Dependencies', 4, 4),
-      t('db5', 'Transaction Management & Concurrency', 4, 5),
-      t('db6', 'Indexing: B-Trees & Hash', 3, 6),
-      t('db7', 'File Organization & Storage', 2, 7),
-    ],
-  },
-  {
-    id: 'cn',
-    name: 'Computer Networks',
-    icon: 'Network',
-    selected: true,
-    topics: [
-      t('cn1', 'OSI & TCP/IP Models', 2, 1),
-      t('cn2', 'Data Link Layer: Framing & Error Control', 3, 2),
-      t('cn3', 'Medium Access Control & Ethernet', 3, 3),
-      t('cn4', 'Network Layer: IP, Subnetting & Routing', 4, 4),
-      t('cn5', 'Transport Layer: TCP & UDP', 4, 5),
-      t('cn6', 'Application Layer Protocols', 2, 6),
-    ],
-  },
-  {
-    id: 'aptitude',
-    name: 'General Aptitude',
-    icon: 'Brain',
-    selected: true,
-    topics: [
-      t('ap1', 'Numerical Ability', 4, 1),
-      t('ap2', 'Verbal Ability & Reading Comprehension', 4, 2),
-      t('ap3', 'Analytical Reasoning', 3, 3),
-      t('ap4', 'Spatial Reasoning & Data Interpretation', 2, 4),
-    ],
-  },
-];
+export const GATE_SUBJECTS: Subject[] = GATE_2027_SYLLABUS.map((subject, order) => ({
+  id: subject.id,
+  name: subject.name,
+  icon: subject.icon,
+  enabled: true,
+  order,
+  topics: subject.topics.map(([name, subtopics = []], i) => {
+    const id = `${subject.id}-${i + 1}`;
+    return {
+      id,
+      name,
+      subtopics: subtopics.map((sub, j) => ({ id: `${id}-${j + 1}`, name: sub })),
+      estimatedHours: DEFAULT_TOPIC_HOURS,
+      priority: 'Medium' as const,
+      status: 'not-started' as const,
+    };
+  }),
+}));
 
 export const DEFAULT_SETTINGS: Settings = {
   studyStartDate: new Date().toISOString().slice(0, 10),

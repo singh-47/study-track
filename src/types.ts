@@ -1,18 +1,27 @@
-export type TopicStatus = 'pending' | 'in-progress' | 'completed';
+export type TopicStatus = 'not-started' | 'in-progress' | 'completed';
+
+export type Priority = 'High' | 'Medium' | 'Low';
+
+export interface Subtopic {
+  id: string;
+  name: string;
+}
 
 export interface Topic {
   id: string;
   name: string;
-  status: TopicStatus;
+  subtopics: Subtopic[];
   estimatedHours: number;
-  priority: number; // 1 = highest
+  priority: Priority;
+  status: TopicStatus;
 }
 
 export interface Subject {
   id: string;
   name: string;
   icon: string;
-  selected: boolean;
+  enabled: boolean;
+  order: number;
   topics: Topic[];
 }
 

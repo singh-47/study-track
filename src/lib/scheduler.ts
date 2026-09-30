@@ -1,4 +1,4 @@
-import type { Subject, Task, Settings, Topic } from '@/types';
+import type { Subject, Task, Settings, Topic, Priority } from '@/types';
 import { nextNDays } from '@/lib/dates';
 
 export const DAY_START = 14 * 60; // 2:00 PM
@@ -9,13 +9,7 @@ const MIN_CHUNK = 15;
 const REVIEW_MINUTES = 30;
 export const PLAN_DAYS = 8; // today + next 7 days (matches the Schedule page)
 
-export type PriorityLevel = 'High' | 'Medium' | 'Low';
-
-export function priorityLevel(priority: number): PriorityLevel {
-  if (priority <= 3) return 'High';
-  if (priority <= 6) return 'Medium';
-  return 'Low';
-}
+export type PriorityLevel = Priority;
 
 const LEVEL_RANK: Record<PriorityLevel, number> = { High: 0, Medium: 1, Low: 2 };
 
@@ -77,7 +71,7 @@ function freeSlots(blocks: Slot[], busy: Task[]): Slot[] {
   return free;
 }
 
-function buildQueue(subjects: Subject[], settings: Settings, kept: Task[], today: string): QueueItem[] {
+function buildQueue(subjects: Subject[], kept: Task[], today: string): QueueItem[] {
   const doneMin = new Map<string, number>();
   const openMin = new Map<string, number>();
   const parts = new Map<string, number>();
@@ -90,22 +84,17 @@ function buildQueue(subjects: Subject[], settings: Settings, kept: Task[], today
     if (t.generated) parts.set(key, (parts.get(key) ?? 0) + 1);
   }
 
-  const order = (id: string) => {
-    const i = settings.subjectOrder.indexOf(id);
-    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
-  };
-
   const candidates: { subject: Subject; topic: Topic; index: number }[] = [];
   for (const subject of subjects) {
-    if (!subject.selected) continue;
+    if (!subject.enabled) continue;
     subject.topics.forEach((topic, index) => {
       if (topic.status !== 'completed') candidates.push({ subject, topic, index });
     });
   }
   candidates.sort(
     (a, b) =>
-      LEVEL_RANK[priorityLevel(a.topic.priority)] - LEVEL_RANK[priorityLevel(b.topic.priority)] ||
-      order(a.subject.id) - order(b.subject.id) ||
+      LEVEL_RANK[a.topic.priority] - LEVEL_RANK[b.topic.priority] ||
+      a.subject.order - b.subject.order ||
       a.index - b.index
   );
 
@@ -113,7 +102,7 @@ function buildQueue(subjects: Subject[], settings: Settings, kept: Task[], today
   for (const { subject, topic } of candidates) {
     const key = `${subject.id}/${topic.id}`;
     const total = Math.round(topic.estimatedHours * 60);
-    const done = topic.status === 'pending' ? 0 : doneMin.get(key) ?? 0;
+    const done = topic.status === 'not-started' ? 0 : doneMin.get(key) ?? 0;
     const open = openMin.get(key) ?? 0;
     let remaining = total - done - open;
     if (remaining <= 0 && open === 0) remaining = Math.min(REVIEW_MINUTES, total);
@@ -143,8 +132,15 @@ export function planSchedule(
     return true;
   };
 
-  const kept = tasks.filter((t) => t.done || !t.generated || !regenerable(t.date));
-  const queue = buildQueue(subjects, settings, kept, today);
+  const topicExists = (t: Task) =>
+    subjects.some((s) => s.id === t.subjectId && s.topics.some((tp) => tp.id === t.topicId));
+  const kept = tasks.filter(
+    (t) =>
+      t.done ||
+      !t.generated ||
+      (!regenerable(t.date) && (t.date < today || topicExists(t)))
+  );
+  const queue = buildQueue(subjects, kept, today);
   const blocks = studyBlocks(settings);
   const created: Task[] = [];
 
@@ -205,7 +201,7 @@ export function taskPriority(task: Task, subjects: Subject[]): PriorityLevel | n
   const topic = subjects
     .find((s) => s.id === task.subjectId)
     ?.topics.find((t) => t.id === task.topicId);
-  return topic ? priorityLevel(topic.priority) : null;
+  return topic ? topic.priority : null;
 }
 
 export function nextIncompleteTask(tasks: Task[], today: string): Task | undefined {

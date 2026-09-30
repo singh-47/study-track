@@ -5,7 +5,6 @@ import { todayStr, daysBetween, formatDate } from '@/lib/dates';
 import { totalStudyMinutes } from '@/lib/progress';
 import TaskRow from '@/components/TaskRow';
 import ProgressBar from '@/components/ProgressBar';
-import { GATE_SUBJECTS } from '@/data/subjects';
 import { nextIncompleteTask, toMinutes, formatTimeRange, NIGHT_START } from '@/lib/scheduler';
 
 export default function HomePage({ store }: { store: Store }) {
@@ -37,7 +36,7 @@ export default function HomePage({ store }: { store: Store }) {
     { label: 'Night Study', tasks: todayTasks.filter((t) => toMinutes(t.time) >= NIGHT_START) },
   ].filter((g) => g.tasks.length > 0);
 
-  const selectedSubjects = subjects.filter((s) => s.selected);
+  const selectedSubjects = subjects.filter((s) => s.enabled);
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
@@ -97,7 +96,7 @@ export default function HomePage({ store }: { store: Store }) {
               <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Current Task</p>
               <p className="text-slate-800 font-medium mt-1">{currentTask.topic}</p>
               <p className="text-sm text-slate-500 mt-0.5">
-                {GATE_SUBJECTS.find((s) => s.id === currentTask.subjectId)?.name}
+                {subjects.find((s) => s.id === currentTask.subjectId)?.name}
               </p>
             </div>
           )}
@@ -106,7 +105,7 @@ export default function HomePage({ store }: { store: Store }) {
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Next Task</p>
               <p className="text-slate-800 font-medium mt-1">{nextTask.topic}</p>
               <p className="text-sm text-slate-500 mt-0.5">
-                {GATE_SUBJECTS.find((s) => s.id === nextTask.subjectId)?.name} ·{' '}
+                {subjects.find((s) => s.id === nextTask.subjectId)?.name} ·{' '}
                 {nextTask.date !== today && `${formatDate(nextTask.date)}, `}
                 {formatTimeRange(nextTask.time, nextTask.duration)}
               </p>
