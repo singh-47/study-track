@@ -14,7 +14,7 @@ export default function DashboardPage({ store }: { store: Store }) {
   const { subjects, tasks, settings } = store;
   const today = todayStr();
   const daysLeft = daysBetween(today, settings.examDate);
-  const selectedSubjects = subjects.filter((s) => s.selected);
+  const selectedSubjects = subjects.filter((s) => s.enabled);
   const overall = overallProgress(selectedSubjects);
   const completed = completedTopics(selectedSubjects);
   const total = totalTopics(selectedSubjects);

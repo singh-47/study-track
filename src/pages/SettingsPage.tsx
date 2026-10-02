@@ -2,10 +2,14 @@ import { useState } from 'react';
 import { Save, Check } from 'lucide-react';
 import type { Store } from '@/hooks/useStore';
 import type { Settings as SettingsType } from '@/types';
+import { sortByOrder } from '@/lib/syllabus';
 
 export default function SettingsPage({ store }: { store: Store }) {
   const { settings, setSettings, subjects, toggleSubjectSelection } = store;
-  const [form, setForm] = useState<SettingsType>(settings);
+  const [form, setForm] = useState<SettingsType>(() => ({
+    ...settings,
+    subjectOrder: sortByOrder(subjects).map((s) => s.id),
+  }));
   const [saved, setSaved] = useState(false);
 
   const update = (patch: Partial<SettingsType>) => {
@@ -14,7 +18,7 @@ export default function SettingsPage({ store }: { store: Store }) {
   };
 
   const handleSave = () => {
-    const selectedIds = subjects.filter((s) => s.selected).map((s) => s.id);
+    const selectedIds = subjects.filter((s) => s.enabled).map((s) => s.id);
     setSettings({ ...form, selectedSubjects: selectedIds });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -95,7 +99,7 @@ export default function SettingsPage({ store }: { store: Store }) {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-slate-700">Subject Selection & Order</h2>
           <span className="text-xs text-slate-400">
-            {subjects.filter((s) => s.selected).length} selected
+            {subjects.filter((s) => s.enabled).length} selected
           </span>
         </div>
         <p className="text-xs text-slate-400 mb-3">
@@ -109,19 +113,19 @@ export default function SettingsPage({ store }: { store: Store }) {
               <div
                 key={subjectId}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
-                  subject.selected ? 'bg-slate-50 border-slate-200' : 'bg-slate-50/50 border-slate-100 opacity-60'
+                  subject.enabled ? 'bg-slate-50 border-slate-200' : 'bg-slate-50/50 border-slate-100 opacity-60'
                 }`}
               >
                 <button
                   onClick={() => toggleSubjectSelection(subject.id)}
                   className={`relative w-6 h-6 rounded-md border-2 flex-shrink-0 transition-colors flex items-center justify-center ${
-                    subject.selected
+                    subject.enabled
                       ? 'bg-blue-600 border-blue-600'
                       : 'border-slate-300 hover:border-blue-400'
                   }`}
-                  aria-label={subject.selected ? 'Deselect' : 'Select'}
+                  aria-label={subject.enabled ? 'Deselect' : 'Select'}
                 >
-                  {subject.selected && <Check className="w-4 h-4 text-white" />}
+                  {subject.enabled && <Check className="w-4 h-4 text-white" />}
                 </button>
                 <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-bold flex items-center justify-center flex-shrink-0">
                   {index + 1}

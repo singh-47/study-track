@@ -11,6 +11,7 @@ import {
   saveLockedDates,
 } from '@/lib/storage';
 import { planSchedule } from '@/lib/scheduler';
+import { sortByOrder } from '@/lib/syllabus';
 import { todayStr } from '@/lib/dates';
 
 export interface Store {
@@ -35,8 +36,8 @@ function topicStatusFromTasks(tasks: Task[], subject: Subject | undefined, topic
     .filter((t) => t.done && t.subjectId === subject.id && t.topicId === topicId)
     .reduce((acc, t) => acc + t.duration, 0);
   if (doneMin >= topic.estimatedHours * 60) return 'completed';
-  if (doneMin > 0 || topic.status !== 'pending') return 'in-progress';
-  return 'pending';
+  if (doneMin > 0 || topic.status !== 'not-started') return 'in-progress';
+  return 'not-started';
 }
 
 export function useStore(): Store {
@@ -90,7 +91,7 @@ export function useStore(): Store {
     (s: Subject[]) => {
       setSubjectsState(s);
       saveSubjects(s);
-      commitPlan(s, settings, tasks, lockedDates);
+      commitPlan(s, settings, tasks, lockedDates, true);
     },
     [settings, tasks, lockedDates, commitPlan]
   );
@@ -102,9 +103,17 @@ export function useStore(): Store {
 
   const setSettings = useCallback(
     (s: Settings) => {
+      const ordered = sortByOrder(
+        subjects.map((sub) => {
+          const i = s.subjectOrder.indexOf(sub.id);
+          return i === -1 ? sub : { ...sub, order: i };
+        })
+      );
       setSettingsState(s);
       saveSettings(s);
-      commitPlan(subjects, s, tasks, lockedDates, true);
+      setSubjectsState(ordered);
+      saveSubjects(ordered);
+      commitPlan(ordered, s, tasks, lockedDates, true);
     },
     [subjects, tasks, lockedDates, commitPlan]
   );
@@ -112,7 +121,7 @@ export function useStore(): Store {
   const toggleSubjectSelection = useCallback(
     (subjectId: string) => {
       const updated = subjects.map((s) =>
-        s.id === subjectId ? { ...s, selected: !s.selected } : s
+        s.id === subjectId ? { ...s, enabled: !s.enabled } : s
       );
       setSubjectsState(updated);
       saveSubjects(updated);

@@ -5,52 +5,40 @@ const SUBJECTS_KEY = 'gate_tracker_subjects';
 const TASKS_KEY = 'gate_tracker_tasks';
 const SETTINGS_KEY = 'gate_tracker_settings';
 const VERSION_KEY = 'gate_tracker_version';
-const CURRENT_VERSION = '2';
+const CURRENT_VERSION = '3';
 const LOCKED_DATES_KEY = 'gate_tracker_locked_dates';
 const SETTINGS_VERSION_KEY = 'gate_tracker_settings_version';
 const CURRENT_SETTINGS_VERSION = '2';
 
-function migrateSubjects(raw: Subject[]): Subject[] {
-  return GATE_SUBJECTS.map((baseSubject) => {
-    const existing = raw.find((s) => s.id === baseSubject.id);
-    if (!existing) return { ...baseSubject, selected: true };
-
-    const migratedTopics = baseSubject.topics.map((baseTopic) => {
-      const oldTopic = existing.topics.find((t) => t.id === baseTopic.id);
-      if (oldTopic) {
-        return { ...baseTopic, status: oldTopic.status };
-      }
-      return baseTopic;
-    });
-
-    return {
-      ...baseSubject,
-      selected: existing.selected ?? true,
-      topics: migratedTopics,
-    };
+/** Legacy (pre-v3) subjects are replaced by the official syllabus; only the on/off choice carries over. */
+function migrateSubjects(raw: { id: string; selected?: boolean; enabled?: boolean }[]): Subject[] {
+  return GATE_SUBJECTS.map((base) => {
+    const existing = raw.find((s) => s.id === base.id);
+    return { ...base, enabled: existing?.enabled ?? existing?.selected ?? true };
   });
 }
 
 export function loadSubjects(): Subject[] {
   try {
     const raw = localStorage.getItem(SUBJECTS_KEY);
-    const version = localStorage.getItem(VERSION_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Subject[];
-      if (version !== CURRENT_VERSION) {
+      const parsed = JSON.parse(raw);
+      if (localStorage.getItem(VERSION_KEY) !== CURRENT_VERSION) {
         const migrated = migrateSubjects(parsed);
         saveSubjects(migrated);
-        localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
         return migrated;
       }
-      return parsed;
+      return parsed as Subject[];
     }
-  } catch {}
+  } catch {
+    return GATE_SUBJECTS;
+  }
   return GATE_SUBJECTS;
 }
 
 export function saveSubjects(subjects: Subject[]): void {
   localStorage.setItem(SUBJECTS_KEY, JSON.stringify(subjects));
+  localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
 }
 
 export function loadTasks(): Task[] {
