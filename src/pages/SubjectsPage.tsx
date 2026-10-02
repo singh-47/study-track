@@ -11,6 +11,7 @@ import {
   EyeOff,
   Pencil,
   Plus,
+  Sparkles,
   Trash2,
 } from 'lucide-react';
 import type { Store } from '@/hooks/useStore';
@@ -19,6 +20,7 @@ import * as Icons from 'lucide-react';
 import ProgressBar from '@/components/ProgressBar';
 import { subjectProgress } from '@/lib/progress';
 import * as syllabus from '@/lib/syllabus';
+import { aiCoachEnabled, suggestTopicPlan, type TopicSuggestion } from '@/lib/aiCoach';
 
 const PRIORITIES: Priority[] = ['High', 'Medium', 'Low'];
 
@@ -157,6 +159,8 @@ function SubjectDetail({
         <span className="text-sm font-semibold text-slate-700">{pct}%</span>
       </div>
 
+      {aiCoachEnabled && <AiSuggestions subject={subject} subjects={subjects} onChange={onChange} />}
+
       <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
         {subject.topics.map((topic, i) => {
           const style = STATUS_STYLES[topic.status];
@@ -289,6 +293,115 @@ function SubjectDetail({
         onAdd={(name) => onChange(syllabus.addTopic(subjects, subject.id, name))}
         className="mt-4"
       />
+    </div>
+  );
+}
+
+function AiSuggestions({
+  subject,
+  subjects,
+  onChange,
+}: {
+  subject: Subject;
+  subjects: Subject[];
+  onChange: (s: Subject[]) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [suggestions, setSuggestions] = useState<TopicSuggestion[] | null>(null);
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
+
+  const request = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setSuggestions(await suggestTopicPlan(subject));
+      setSkipped(new Set());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'AI request failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const apply = () => {
+    let next = subjects;
+    for (const s of suggestions ?? []) {
+      if (skipped.has(s.topicId)) continue;
+      next = syllabus.updateTopic(next, subject.id, s.topicId, { estimatedHours: s.estimatedHours, priority: s.priority });
+    }
+    onChange(next);
+    setSuggestions(null);
+  };
+
+  const rows = (suggestions ?? []).flatMap((s) => {
+    const topic = subject.topics.find((t) => t.id === s.topicId);
+    return topic ? [{ s, topic }] : [];
+  });
+
+  if (!suggestions) {
+    return (
+      <div className="mb-4">
+        <button
+          onClick={request}
+          disabled={loading || subject.topics.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
+        >
+          <Sparkles className="w-4 h-4" />
+          {loading ? 'Asking AI…' : 'Suggest hours & priority (AI)'}
+        </button>
+        {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 bg-white rounded-xl border border-blue-200 p-4">
+      <p className="text-sm font-semibold text-slate-800 mb-1">AI suggestions</p>
+      <p className="text-xs text-slate-400 mb-3">AI estimates, not based on PYQ data. Untick any you don't want.</p>
+      <div className="space-y-2 mb-3">
+        {rows.length === 0 && <p className="text-sm text-slate-500">No suggestions returned.</p>}
+        {rows.map(({ s, topic }) => (
+          <label key={s.topicId} className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!skipped.has(s.topicId)}
+              onChange={() =>
+                setSkipped((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(s.topicId)) next.delete(s.topicId);
+                  else next.add(s.topicId);
+                  return next;
+                })
+              }
+              className="mt-1"
+            />
+            <span className="flex-1">
+              <span className="text-slate-700">{topic.name}</span>
+              <span className="text-slate-500">
+                {' '}
+                · {topic.estimatedHours}h → <b>{s.estimatedHours}h</b> · {topic.priority} → <b>{s.priority}</b>
+              </span>
+              {s.reason && <span className="block text-xs text-slate-400">{s.reason}</span>}
+            </span>
+          </label>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={apply}
+          disabled={rows.every(({ s }) => skipped.has(s.topicId))}
+          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40"
+        >
+          Apply selected
+        </button>
+        <button
+          onClick={() => setSuggestions(null)}
+          className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100"
+        >
+          Dismiss
+        </button>
+      </div>
     </div>
   );
 }
