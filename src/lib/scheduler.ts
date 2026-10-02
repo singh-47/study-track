@@ -204,8 +204,9 @@ export function taskPriority(task: Task, subjects: Subject[]): PriorityLevel | n
   return topic ? topic.priority : null;
 }
 
-export function nextIncompleteTask(tasks: Task[], today: string): Task | undefined {
+/** First unfinished task starting at or after `nowMinutes` today, or on a later day. */
+export function nextIncompleteTask(tasks: Task[], today: string, nowMinutes: number): Task | undefined {
   return tasks
-    .filter((t) => !t.done && t.date >= today)
+    .filter((t) => !t.done && (t.date > today || (t.date === today && toMinutes(t.time) >= nowMinutes)))
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0];
 }

@@ -29,7 +29,8 @@ export default function HomePage({ store }: { store: Store }) {
   });
   const nextTask = nextIncompleteTask(
     tasks.filter((t) => t.id !== currentTask?.id),
-    today
+    today,
+    now.getHours() * 60 + now.getMinutes()
   );
   const routineGroups = [
     { label: 'Day Study', tasks: todayTasks.filter((t) => toMinutes(t.time) < NIGHT_START) },
